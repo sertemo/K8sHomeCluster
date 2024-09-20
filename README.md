@@ -76,6 +76,7 @@ Utilizando `ufw` abrir los siguientes puertos en el **master-node**:
 - 8443 Para **ingress-nginx** que da acceso al cluster desde internet
 - 10250/tcp Para los kubelet y **logs**
 - 22/tcp Para poder usar **ssh**
+- 179/tcp Para BGP
 
 En los **worker-node** abrir todos los puertos indicados anteriormente excepto el de WireGuard.
 
@@ -106,7 +107,7 @@ En los worker-node crear una interfaz con el master-node de manera similar. Conf
 
 ```toml
 [Interface]
-PrivateKey = <clave privada worker node 1 o 2>
+PrivateKey = <clave privada worker node1>
 Address = 10.0.0.4/24
 
 [Peer]
@@ -142,7 +143,7 @@ AllowedIPs = 10.0.0.3/32  # Ip del worker-node 1
 Una vez configurado correctamente todo, desde el cliente se puede Activar la VPN y entrar en cada uno de los nodos usando las ips privadas asignadas.
 
 
-## 4 - Runtime
+## 4- Runtime
 Para poder crear los contenedore hace falta un *container runtime*. En este caso descargaremos [containerd](https://github.com/containerd/containerd/blob/main/docs/getting-started.md) que está soportado por Kubernetes. **Docker** ya no está soportado por Kubernetes.
 
 En todos los nodos ejecutar:
@@ -192,12 +193,12 @@ sudo systemctl restart containerd
 sudo systemctl enable containerd
 ```
 
-## 5 - Deshabilitar swap
+## 5- Deshabilitar swap
 Kubernetes se bloquea si se accede a la memoria swap y por lo tanto recomiendan deshabilitarla.
 
 En todos los nodos hay que editar el archivo `/etc/fstab` y comentar la línea que contiene la partición de **swap**.
 
-## 6 - Configurar los parámetros del kernel
+## 6- Configurar los parámetros del kernel
 En todos los nodos ejecutar los siguientes comandos
 ```sh
 sudo modprobe overlay
@@ -214,7 +215,7 @@ EOF
 sudo sysctl --system
 ```
 
-## 5 - Instalar kubeadm kubectl kubelet
+## 7- Instalar kubeadm kubectl kubelet
 En todos los nodos
 [doc](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/)
 
@@ -245,23 +246,23 @@ sudo apt-mark hold kubelet kubeadm kubectl
 sudo systemctl enable --now kubelet
 ```
 
-## 6 - Iniciar el Cluster
-En el **nodo maestro**
+## 8- Iniciar el Cluster
+Vamos a usar [Flannel](https://github.com/flannel-io/flannel) como CNI. Proporciona redes de capa 3 entre nodos. Kubernetes por sí solo no gestiona la red entre los diferentes pods y nodos, por lo que necesita un complemento de red (plug in) para garantizar que los pods puedan comunicarse entre sí, incluso cuando se ejecutan en diferentes nodos. Flannel es uno de los complementos de red más populares para este propósito. En el **nodo maestro**
 
 ```sh
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16  # Para Flannel (https://github.com/flannel-io/flannel)
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16  # Rango para flannel
 ```
 
 **IMPORTANTE**: Una vez inicializado correctamente, anotar el comando que devuelve para poder juntar nodos. Por ejemplo:
-```sh
+```
 sudo kubeadm join 192.168.1.34:6443 --token ggvwi4.6k2fdo****tt1a58 \
         --discovery-token-ca-cert-hash sha256:159872e038597e35f752cc19822b4dc7060156b226*********
 ```
 
-**Nota**: El parámetro --pod-network-cidr debe coincidir con la red que utilizará tu plugin de red (por ejemplo, Calico)
+**Nota**: El parámetro --pod-network-cidr debe coincidir con la red que utilizará tu plugin de red (en este ejemplo, Flannel)
 
-## 7 - Configurar kubectl
-En el **nodo maestro**
+### 8.1 - Configurar el archivo admin.conf
+Para usar kubectl, debemos configurar `admin.conf`. Para ello en el **nodo maestro** ejecutamos:
 
 ```sh
 mkdir -p $HOME/.kube
@@ -269,50 +270,60 @@ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 ```
 
-## 8 - Instalar plugin de red
-En el nodo maestro se usa Flannel como plugin de red o CNI (lo intenté con Calico pero me daba errores)
+## 9 - Unir los nodos trabajadores
+En cada **worker-node**
+```sh
+sudo kubeadm join 192.168.1.34:6443 --token ggvwi4.******** \
+        --discovery-token-ca-cert-hash sha256:<hahs>
+```
+
+## 10 - Instalar plugin de red
+En el **nodo maestro** se usa Flannel como plugin de red o CNI (lo intenté con Calico pero me daba errores). Se puede instalar con **Helm** o con un manifiesto:
 
 ```sh
 kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 ```
 
-## 9 - Unir los nodos trabajadores
-En cada **worker-node**
-```sh
-sudo kubeadm join 192.168.1.34:6443 --token ggvwi4.6k2fdo****tt1a58 \
-        --discovery-token-ca-cert-hash sha256:159872e038597e35f752cc19822b4dc7060156b226*********
+Hay que instalar plugins en `/opt/cni/bin`. Deben aparecer:
+```bandwidth  bridge  dhcp  dummy  firewall  flannel  host-device  host-local  ipvlan  loopback  macvlan  portmap  ptp  sbr  static  tuning  vlan  vrf
 ```
 
-Después de estos pasos debería estar bien configurado el cluster
+ Para ello los descargamos y los instalamos:
+```sh
+curl -L https://github.com/containernetworking/plugins/releases/download/v1.2.0/cni-plugins-linux-amd64-v1.2.0.tgz | sudo tar -C /opt/cni/bin -xz
+```
+
+Verificar que todos los plugins esten instalados
+```sh
+ls /opt/cni/bin
+```
+
+Reiniciar **kubelet**
+```sh
+sudo systemctl restart kubelet
+```
+
+Después de estos pasos debería estar bien configurado el cluster. Todos los nodos deberían estar en estado **READY**.
 
 Comprobarlo:
 ```sh
 kubectl get nodes
 ```
+![alt text](img/image.png)
 
 Si los pods de coredns no están en Running verificar que estan todos los plugins de flannel en 
 
-```sh
-ls /opt/cni/bin/
 
-```
-
-Si solo aparece `flannel`descargar el resto de plugins:
-
-```sh
-sudo curl -L https://github.com/containernetworking/plugins/releases/download/v1.2.0/cni-plugins-linux-amd64-v1.2.0.tgz | sudo tar -C /opt/cni/bin -xz
-```
-
-Verificar que todos los pods estén en *Running*
+Verificar que todos los pods estén en **Running**
 
 ```sh
 kubectl get pods -n kube-system
-k get pods -n kube-flannel (con alias k=kubectl)
+k get pods -n kube-flannel # (con alias k=kubectl)
 ```
 
-Verificar la conectividad con API server del master node
+Verificar la conectividad con API server del **master node**.
 
-En el nodo maestro
+En el nodo maestro, podemos ver la IP del API server de la siguiente manera (control-plane)
 ```sh
 kubectl cluster-info
 ```
@@ -320,4 +331,23 @@ kubectl cluster-info
 Crear un nodo simple y meterse en él para llamar a la API
 ```sh
 kubectl run -it --rm --image=busybox debug --restart=Never -- /bin/sh
+```
+
+## 11- Troubleshouting
+
+Si hay problemas con la autenticación **TLS** entre nodos o entre componentes del cluster, renovar los certificados:
+```sh
+sudo kubeadm certs renew all
+```
+
+Después ded renovar certificados, reiniciar componentes clave del cluster:
+```sh
+kubectl rollout restart pod kube-apiserver -n kube-system
+kubectl rollout restart pod etcd -n kube-system
+```
+
+Si hay problemas con un pod o un servicio específico, obtener información con el siguiente comando:
+```sh
+kubectl describe pod <pod-name> -n <namespace>
+
 ```
