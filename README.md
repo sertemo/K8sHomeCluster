@@ -1,7 +1,7 @@
 # Crear un Cluster de Kubernetes Casero
 ![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=for-the-badge&logo=kubernetes&logoColor=white)
 
-Repo para documentar las etapas de la creación de un cluster kubernetes en 3 Beelinks S12Pro
+Repo para documentar las etapas de la creación de un cluster kubernetes en 3 **[Beelinks S12Pro]**(https://www.amazon.es/dp/B07RNKFJHT?ref=ppx_yo2ov_dt_b_fed_asin_title)
 
 ## 1- Sistema Operativo
 
@@ -10,7 +10,7 @@ Repo para documentar las etapas de la creación de un cluster kubernetes en 3 Be
     - F7
     - Setup
     - Advanced setup
-    - Cambiar a State S5
+    - Cambiar a **State S5**
 - Opcionalmente instalar **Starship** para tener un prompt personalizado. [Doc](https://starship.rs/guide/)
 ```sh
 curl -sS https://starship.rs/install.sh | sh
@@ -18,7 +18,7 @@ curl -sS https://starship.rs/install.sh | sh
 
 ## 2- Configuración de red
 
-Es conveniente tener una ip privada fija en cada equipo. Para ello hay que seguir los siguientes pasos en **todos los nodos**. :
+Es conveniente tener una **ip privada fija** en cada equipo. Para ello hay que seguir los siguientes pasos en **todos los nodos**.
 
 ### 2.1- Deshabilitar la configuración de red de cloud-init para hacer cambios permanentes
 
@@ -74,16 +74,16 @@ network:
 ### 2.2- Abrir puertos
 
 Utilizando `ufw` abrir los siguientes puertos en el **master-node**:
-- 51820/udp Para usar **WireGuard VPN**, no es imprescindible
-- 6443
-- 443
-- 80
-- 8443 Para **ingress-nginx** que da acceso al cluster desde internet
-- 10250/tcp Para los kubelet y **logs**
-- 22/tcp Para poder usar **ssh**
-- 179/tcp Para BGP
+- **51820/udp** Para usar **WireGuard VPN**, no es imprescindible usar WireGuard
+- **6443**
+- **443**
+- **80**
+- **8443** Para **ingress-nginx** que da acceso al cluster desde internet
+- **10250/tcp** Para los kubelet y **logs**
+- **22/tcp** Para poder usar **ssh**
+- **179/tcp** Para BGP
 
-En los **worker-node** abrir todos los puertos indicados anteriormente excepto el de WireGuard.
+En los **worker-node** abrir todos los puertos indicados anteriormente excepto el de **WireGuard**, que no es necesario.
 
 Verificar estado del firewall
 ```sh
@@ -151,7 +151,7 @@ Una vez configurado correctamente todo, desde el cliente se puede Activar la VPN
 
 ## 4- Runtime
 
-Para poder crear los contenedore hace falta un *container runtime*. En este caso descargaremos [containerd](https://github.com/containerd/containerd/blob/main/docs/getting-started.md) que está soportado por Kubernetes. **Docker** ya no está soportado por Kubernetes.
+Para poder crear los contenedores dentro del cluster hace falta un *container runtime*. En este caso descargaremos [containerd](https://github.com/containerd/containerd/blob/main/docs/getting-started.md) que está soportado por Kubernetes. **Docker** ya no está soportado por Kubernetes.
 
 En todos los nodos ejecutar:
 ```sh
@@ -227,8 +227,8 @@ sudo sysctl --system
 
 ## 7- Instalar kubeadm kubectl kubelet
 
-En todos los nodos
 [doc](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/)
+En todos los nodos hay que instalar las herramientas de administración del cluster.
 
 ```sh
 sudo apt-get update
@@ -259,23 +259,24 @@ sudo systemctl enable --now kubelet
 
 ## 8- Iniciar el Cluster
 
-Vamos a usar [Flannel](https://github.com/flannel-io/flannel) como CNI. Proporciona redes de capa 3 entre nodos. Kubernetes por sí solo no gestiona la red entre los diferentes pods y nodos, por lo que necesita un complemento de red (plug in) para garantizar que los pods puedan comunicarse entre sí, incluso cuando se ejecutan en diferentes nodos. Flannel es uno de los complementos de red más populares para este propósito. En el **nodo maestro**
+Vamos a usar [Flannel](https://github.com/flannel-io/flannel) como **CNI**. Proporciona redes de capa 3 entre nodos. Kubernetes por sí solo no gestiona la red entre los diferentes pods y nodos, por lo que necesita un complemento de red (plug in) para garantizar que los pods puedan comunicarse entre sí, incluso cuando se ejecutan en diferentes nodos. Flannel es uno de los complementos de red más populares para este propósito. En el **nodo maestro**
 
 ```sh
 sudo kubeadm init --pod-network-cidr=10.244.0.0/16  # Rango para flannel
 ```
 
 **IMPORTANTE**: Una vez inicializado correctamente, anotar el comando que devuelve para poder juntar nodos. Por ejemplo:
-```
-sudo kubeadm join 192.168.1.34:6443 --token ggvwi4.6k2fdo****tt1a58 \
-        --discovery-token-ca-cert-hash sha256:159872e038597e35f752cc19822b4dc7060156b226*********
+
+```sh
+sudo kubeadm join 192.168.1.34:6443 --token ggvwi4.6k2********tt1a58 \
+        --discovery-token-ca-cert-hash sha256:159872e0385********f752cc19822b4dc7060156b226*********
 ```
 
-**Nota**: El parámetro --pod-network-cidr debe coincidir con la red que utilizará tu plugin de red (en este ejemplo, Flannel)
+**Nota**: El parámetro --pod-network-cidr debe coincidir con la red que utilizará tu plugin de red (en este ejemplo, **Flannel**)
 
 ### 8.1 - Configurar el archivo admin.conf
 
-Para usar kubectl, debemos configurar `admin.conf`. Para ello en el **nodo maestro** ejecutamos:
+Para usar **kubectl**, debemos configurar `admin.conf`. Para ello en el **nodo maestro** ejecutamos:
 
 ```sh
 mkdir -p $HOME/.kube
@@ -288,7 +289,7 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 En cada **worker-node**
 ```sh
 sudo kubeadm join 192.168.1.34:6443 --token ggvwi4.******** \
-        --discovery-token-ca-cert-hash sha256:<hahs>
+        --discovery-token-ca-cert-hash sha256:<hash>
 ```
 
 ## 10 - Instalar plugin de red
@@ -300,7 +301,8 @@ kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/
 ```
 
 Hay que instalar plugins en `/opt/cni/bin`. Deben aparecer:
-```bandwidth  bridge  dhcp  dummy  firewall  flannel  host-device  host-local  ipvlan  loopback  macvlan  portmap  ptp  sbr  static  tuning  vlan  vrf
+```
+bandwidth  bridge  dhcp  dummy  firewall  flannel  host-device  host-local  ipvlan  loopback  macvlan  portmap  ptp  sbr  static  tuning  vlan  vrf
 ```
 
  Para ello los descargamos y los instalamos:
@@ -326,7 +328,7 @@ kubectl get nodes
 ```
 ![alt text](img/image.png)
 
-Si los pods de coredns no están en Running verificar que estan todos los plugins de flannel en 
+Si los pods de **coredns** no están en Running verificar que estan todos los plugins de flannel en 
 
 
 Verificar que todos los pods estén en **Running**
@@ -355,7 +357,7 @@ Si hay problemas con la autenticación **TLS** entre nodos o entre componentes d
 sudo kubeadm certs renew all
 ```
 
-Después ded renovar certificados, reiniciar componentes clave del cluster:
+Después de renovar certificados, reiniciar componentes clave del cluster:
 ```sh
 kubectl rollout restart pod kube-apiserver -n kube-system
 kubectl rollout restart pod etcd -n kube-system
