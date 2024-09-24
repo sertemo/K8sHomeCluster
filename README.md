@@ -1,7 +1,7 @@
 # Crear un Cluster de Kubernetes Casero
 ![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=for-the-badge&logo=kubernetes&logoColor=white)
 
-Repo para documentar las etapas de la creación de un cluster kubernetes en 3 **[Beelinks S12Pro]**(https://www.amazon.es/dp/B07RNKFJHT?ref=ppx_yo2ov_dt_b_fed_asin_title)
+Repo para documentar las etapas de la creación de un cluster kubernetes en 3 [Beelinks S12Pro](https://www.amazon.es/dp/B07RNKFJHT?ref=ppx_yo2ov_dt_b_fed_asin_title)
 
 ## 1- Sistema Operativo
 
