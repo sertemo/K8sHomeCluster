@@ -1,8 +1,10 @@
 # Crear un Cluster de Kubernetes Casero
+![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=for-the-badge&logo=kubernetes&logoColor=white)
 
 Repo para documentar las etapas de la creación de un cluster kubernetes en 3 Beelinks S12Pro
 
 ## 1- Sistema Operativo
+
 - Instalar **Ubuntu Server** en los 3 beelink
 - Habilitar el reinicio automático tras **PowerOff** de los beelink en la BIOS:
     - F7
@@ -15,8 +17,11 @@ curl -sS https://starship.rs/install.sh | sh
 ```
 
 ## 2- Configuración de red
+
 Es conveniente tener una ip privada fija en cada equipo. Para ello hay que seguir los siguientes pasos en **todos los nodos**. :
-### 2.1- Deshabilitar la configuración de red de cloud-init para hacer cambios permanentes:
+
+### 2.1- Deshabilitar la configuración de red de cloud-init para hacer cambios permanentes
+
 ```sh
 sudo mkdir -p /etc/cloud/cloud.cfg.d
 sudo nano /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
@@ -86,6 +91,7 @@ sudo ufw status
 ```
 
 ### 3- WireGuard VPN
+
 Opcionalmente se puede instalar [WireGuard](https://www.wireguard.com/quickstart/) para crear un tunel desde cualquier red a la red local y poder acceder asi a través de IP privada a todos los nodos.
 
 Para ello mi ordenador portatil hace de cliente descargando WireGuard para [windows](https://www.wireguard.com/install/).
@@ -144,6 +150,7 @@ Una vez configurado correctamente todo, desde el cliente se puede Activar la VPN
 
 
 ## 4- Runtime
+
 Para poder crear los contenedore hace falta un *container runtime*. En este caso descargaremos [containerd](https://github.com/containerd/containerd/blob/main/docs/getting-started.md) que está soportado por Kubernetes. **Docker** ya no está soportado por Kubernetes.
 
 En todos los nodos ejecutar:
@@ -172,6 +179,7 @@ sudo apt-get install -y containerd.io
 ```
 
 ### 4.1- cgroup (administrador de recursos RAM etc)
+
 También hace falta un administrador y gestor de los recursos de los contenedores como RAM, CPU etc.
 ```sh
 sudo mkdir -p /etc/containerd
@@ -194,11 +202,13 @@ sudo systemctl enable containerd
 ```
 
 ## 5- Deshabilitar swap
+
 Kubernetes se bloquea si se accede a la memoria swap y por lo tanto recomiendan deshabilitarla.
 
 En todos los nodos hay que editar el archivo `/etc/fstab` y comentar la línea que contiene la partición de **swap**.
 
 ## 6- Configurar los parámetros del kernel
+
 En todos los nodos ejecutar los siguientes comandos
 ```sh
 sudo modprobe overlay
@@ -216,6 +226,7 @@ sudo sysctl --system
 ```
 
 ## 7- Instalar kubeadm kubectl kubelet
+
 En todos los nodos
 [doc](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/)
 
@@ -247,6 +258,7 @@ sudo systemctl enable --now kubelet
 ```
 
 ## 8- Iniciar el Cluster
+
 Vamos a usar [Flannel](https://github.com/flannel-io/flannel) como CNI. Proporciona redes de capa 3 entre nodos. Kubernetes por sí solo no gestiona la red entre los diferentes pods y nodos, por lo que necesita un complemento de red (plug in) para garantizar que los pods puedan comunicarse entre sí, incluso cuando se ejecutan en diferentes nodos. Flannel es uno de los complementos de red más populares para este propósito. En el **nodo maestro**
 
 ```sh
@@ -262,6 +274,7 @@ sudo kubeadm join 192.168.1.34:6443 --token ggvwi4.6k2fdo****tt1a58 \
 **Nota**: El parámetro --pod-network-cidr debe coincidir con la red que utilizará tu plugin de red (en este ejemplo, Flannel)
 
 ### 8.1 - Configurar el archivo admin.conf
+
 Para usar kubectl, debemos configurar `admin.conf`. Para ello en el **nodo maestro** ejecutamos:
 
 ```sh
@@ -271,6 +284,7 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 ```
 
 ## 9 - Unir los nodos trabajadores
+
 En cada **worker-node**
 ```sh
 sudo kubeadm join 192.168.1.34:6443 --token ggvwi4.******** \
@@ -278,6 +292,7 @@ sudo kubeadm join 192.168.1.34:6443 --token ggvwi4.******** \
 ```
 
 ## 10 - Instalar plugin de red
+
 En el **nodo maestro** se usa Flannel como plugin de red o CNI (lo intenté con Calico pero me daba errores). Se puede instalar con **Helm** o con un manifiesto:
 
 ```sh
@@ -351,3 +366,115 @@ Si hay problemas con un pod o un servicio específico, obtener información con 
 kubectl describe pod <pod-name> -n <namespace>
 
 ```
+
+## 12- Crear Volúmenes en local path
+
+### 12.1- StorageClass
+
+Para poder crear volúmenes y archivos persistentes dentro del cluster de forma dinámica es necesario primero crear una **StorageClass** que llamamos `loca-path`. Define cómo y donde se deben almacenar los volúmenes persistentes.
+
+Para ello aplicamos el siguiente archivo:
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-path
+provisioner: rancher.io/local-path
+reclaimPolicy: Delete  # Indica qué hacer con la data cuando el volumen se elimina
+volumeBindingMode: Immediate
+```
+
+### 12.2- Controlador local-path-storage
+
+El controlador es responsable de gestionar los volúmenes locales en los nodos del cluster. Aprovisiona dinámicamente dichos volúmenes en el entorno local.
+
+```sh
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+```
+
+### 12.3- Crear PVC
+
+Ahora, en el entorno de cualquier aplicación, puede crearse un **PersistenVolumeClaim** (PVC) para solicitar al StorageClass un determinado espacio.
+Por ejemplo:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dynamic-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi  # Cuanto espacio se solicita
+  storageClassName: local-path  # Nombre del storageclass creado anteriormente
+```
+
+### 12.4- Verificar que está bound
+
+Si el aprovisionamiento dinámico está funcionando correctamente, el PVC debería aparecer como `Bound`, indicando que se ha aprovisionado un volumen correctamente.
+
+```sh
+kubectl get pvc
+```
+
+### 12.5- Crear Deployment que use PVC
+
+Un Deployment puede montar el volumen solicitado por el PVC para almacenar datos persistentes.
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.26.0
+          volumeMounts:
+            - name: data
+              mountPath: /some/mount/path  # Ruta dentro de los contenedores de este deployment que será persistente
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: dynamic-pv  # Nombre del PVC creado
+```
+
+### 12.6- Verificar que la información persiste
+
+Entramos en un pod
+```sh
+kubectl exec -it nginx-deployment-<pod-id> -- /bin/sh
+```
+Escribimos en la ruta persistente definida en el deployment
+```sh
+cd /some/mount/path
+echo "Data persistente" > test.txt
+```
+
+Eliminado el pod
+```sh
+kubectl delete pod <nombre-del-pod>
+```
+
+El pod se habrá vuelto a crear de nuevo, entramos en el nuevo pod y verificamos el archivo
+```sh
+kubectl exec -it <nuevo-nombre-del-pod> -- /bin/sh
+ls /some/mount/path
+cat /some/mount/path/test.txt
+```
+
+
+
+
+
