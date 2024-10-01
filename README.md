@@ -145,6 +145,47 @@ AllowedIPs = 10.0.0.3/32  # Ip del worker-node 1
 [Peer]
 # ...
 ```
+Es importante ejecutar el servicio en cada nodo para asegurarse de que corra y se reinicie siempre:
+```bash
+sudo systemctl enable wg-quick@wg0
+```
+
+Si hay algún problema probar a hacer un `restart` del servicio.
+
+```bash
+sudo systemctl restart wg-quick@wg0
+```
+
+Para ver si todo funciona correctamente, ejecutar el siguiente comando en el **nodo master**:
+```bash
+sudo wg
+```
+
+Deberían verse todos los peers y los handshakes realizados
+```
+interface: wg0
+  public key: KKoTamH4RtqGc5yT8yHVUYVVRZ9WfUI1C8Sotl4PEBc=
+  private key: (hidden)
+  listening port: 51820
+
+peer: lE0bLnclDtm+jJRmOZHyFqfdN0/agVyTlS29qTt3ujc=
+  endpoint: 192.168.1.1:52763
+  allowed ips: 10.0.0.3/32
+  latest handshake: 10 seconds ago
+  transfer: 180 B received, 92 B sent
+
+peer: D20Lhynl5WuofqK4CdK/QXDAynKYuzL7d27o4fZZ0w0=
+  endpoint: 192.168.1.1:65042
+  allowed ips: 10.0.0.2/32
+  latest handshake: 37 seconds ago
+  transfer: 87.80 KiB received, 100.79 KiB sent
+
+peer: tQPSZsGQL68jljMtiKRUHlAFy+v+dB3Hc1aBcwwleT0=
+  endpoint: 192.168.1.1:37449
+  allowed ips: 10.0.0.4/32
+  latest handshake: 45 seconds ago
+  transfer: 1.17 KiB received, 368 B sent
+```
 
 Una vez configurado correctamente todo, desde el cliente se puede Activar la VPN y entrar en cada uno de los nodos usando las ips privadas asignadas.
 
