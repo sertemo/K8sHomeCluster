@@ -517,6 +517,74 @@ ls /some/mount/path
 cat /some/mount/path/test.txt
 ```
 
+# 13- Conectarse al cluster a través de VPN tunel WireGuard
+
+Para poder conectarse al cluster a través de una VPN con WireGuard hay que agregar la ip del master node que le asigna WireGuard a la lista de certificados de kubeadm sino fallará la verificación tls.
+
+Podemos descargar el yaml en local con el siguiente comando tras hacer **ssh en el master node**:
+
+```sh 
+kubectl -n kube-system get configmap kubeadm-config -o jsonpath='{.data.ClusterConfiguration}' > kubeadm.yaml
+```
+
+Y editarlo agregando al apartado `certSANs` la ip del master node asignada por WireGuard
+
+```yaml
+apiServer:
+  certSANs:
+    - "192.168.1.34"
+    - "10.96.0.1"
+    - "10.0.0.1"  # Agregada IP del master node aquí
+apiVersion: kubeadm.k8s.io/v1beta4
+caCertificateValidityPeriod: 87600h0m0s
+certificateValidityPeriod: 8760h0m0s
+certificatesDir: /etc/kubernetes/pki
+clusterName: kubernetes
+controllerManager: {}
+dns: {}
+encryptionAlgorithm: RSA-2048
+etcd:
+  local:
+    dataDir: /var/lib/etcd
+imageRepository: registry.k8s.io
+kind: ClusterConfiguration
+kubernetesVersion: v1.31.0
+networking:
+  dnsDomain: cluster.local
+  podSubnet: 10.244.0.0/16
+  serviceSubnet: 10.96.0.0/12
+proxy: {}
+scheduler: {}
+```
+
+Después, mover los certificados para que kubeadm cree unos nuevos. Aqui los movemos a la carpeta del usuario
+
+```sh
+mv /etc/kubernetes/pki/apiserver.{crt,key} ~
+```
+
+Regeneramos nuevos certificados usando el yaml modificado
+
+```sh
+kubeadm init phase certs apiserver --config kubeadm.yaml
+```
+
+Después es necesario reiniciar el pod de `kube-apiserver-master-node` que se encuentra en el namespace  `kube-system`
+
+```sh
+k get pods -n kube-system
+```
+
+Borramos el pod para que se vuelva a generar
+
+```sh
+k delete pod -n kube-system kube-apiserver-master-node
+```
+
+Tras esto ya deberíamos ser capaces de conectarnos al cluster con la VPN de WireGuard activada sin necesidad de hacer ssh al master node.
+
+# 14- Dar acceso a mi cluster a un amigo 
+
 
 
 
