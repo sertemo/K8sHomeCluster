@@ -97,7 +97,7 @@ Opcionalmente se puede instalar [WireGuard](https://www.wireguard.com/quickstart
 Para ello mi ordenador portatil hace de cliente descargando WireGuard para [windows](https://www.wireguard.com/install/).
 En el cliente hay que crear una interfaz con clave privada y direccion IP privada y un peer que será el nodo maestro especificando Publickey del nodo maestro, AllowedIPs, Endpoints. Se peude generar un archivo que se carga en la UI
 
-```toml
+```ini
 [Interface]
 PrivateKey = <clave privada del cliente>
 Address = 10.0.0.2/24
@@ -111,7 +111,7 @@ PersistentKeepalive = 25
 
 En los worker-node crear una interfaz con el master-node de manera similar. Configurar el archivo `/etc/wireguard/wg0.conf`
 
-```toml
+```ini
 [Interface]
 PrivateKey = <clave privada worker node1>
 Address = 10.0.0.4/24
@@ -125,7 +125,7 @@ PersistentKeepalive = 25
 
 La conexión a la red privada se hará a través del master-node. La configuración del master-node tiene que recoger todos los peer en el archivo `wg0.conf`. Por ejemplo:
 
-```toml
+```ini
 [Interface]
 Address = 10.0.0.1/24   # IP para el servidor WireGuard (master-node)
 ListenPort = 51820       # Puerto para WireGuard
@@ -583,7 +583,96 @@ k delete pod -n kube-system kube-apiserver-master-node
 
 Tras esto ya deberíamos ser capaces de conectarnos al cluster con la VPN de WireGuard activada sin necesidad de hacer ssh al master node.
 
-# 14- Dar acceso a mi cluster a un amigo 
+# 14- Pasos para dar acceso al cluster a un amigo
+
+## 14.1- Instalar kubectl
+El amigo tendrá que instalar `kubectl` en su máquina en función de su sistema operativo.
+
+## 14.2- Configurar tunel VPN con WireGuard
+El amigo tendrá que instalar también WireGuard en su sistema y configurarlo.
+
+Para la configuración es necesario intercambiar claves públicas / privadas
+
+En la máquina del amigo puede generarse un par de claves:
+
+```sh
+wg genkey | tee privatekey | wg pubkey > publickey
+```
+
+La clave pública será para el master node y la privada deberá guardarse en la configuración de WireGuard
+
+Agregar un nuevo peer en el archivo `/etc/wireguard/wg0.conf` en el **master-node**.
+
+```ini
+[Peer]
+PublicKey = <clave_publica_amigo>
+AllowedIPs = 10.0.0.5/32  # IP asignada a su máquina
+```
+
+En la máquina del amigo agregar como peer el master-node al archivo de configuración de WireGuard:
+
+```ini
+[Interface]
+PrivateKey = <clave_privada_de_tu_amigo>
+Address = 10.0.0.5/24  # IP asignada a su máquina dentro de la VPN
+
+[Peer]
+PublicKey = <clave_publica_del_master-node>
+AllowedIPs = 10.0.0.0/24  # Rango de IPs de la red privada del clúster
+Endpoint = trymlmodels.com:51820
+PersistentKeepalive = 25
+```
+
+Reiniciar el servicio WireGuard en el master node:
+
+```bash
+sudo systemctl restart wg-quick@wg0
+```
+
+Tras esto hay que activar WireGuard en la máquina del amigo. En Windows se hace a través de la interfaz gráfica:
+
+![alt text](<img/wireguard windwos.JPG>)
+
+Verificar que los handshakes se realizan correctamente.
+
+## 14.3- Archivo kubeconfig
+
+Para poder interactuar con el cluster, el amigo necesitará el archivo `~/.kube/config` de mi cluster.
+
+Se puede copiar mediante scp:
+
+```sh
+scp user@master-node:~/.kube/config ~/.kube/config
+```
+
+Editar el archivo y asegurarse de que está la ip interna de la VPN del master node
+
+```yaml
+clusters:
+- cluster:
+    certificate-authority-data: ...
+    server: https://10.0.0.1:6443  # ip asignada al master node en la VPN
+  name: kubernetes
+```
+
+## 14.4- Exportar KUBECONFIG
+
+En la máquina del amigo exportar la variable KUBECONFIG para que apunte al archivo de configuración
+
+```sh
+export KUBECONFIG=~/.kube/config
+```
+
+Para que el cambio sea permanente puede agregarse a `.bash_profile` o  `.bashrc` en caso de usar la terminal bash.
+
+## 14.5- Verificar la conexión
+
+Una vez realizado los pasos anteriores, el amigo ya debería ser capaz de conectarse al clúster
+
+```sh
+kubectl get nodes -owide
+```
+
 
 
 
