@@ -414,7 +414,7 @@ kubectl describe pod <pod-name> -n <namespace>
 
 ### 12.1- StorageClass
 
-Para poder crear volúmenes y archivos persistentes dentro del cluster de forma dinámica es necesario primero crear una **StorageClass** que llamamos `loca-path`. Define cómo y donde se deben almacenar los volúmenes persistentes.
+Para poder crear volúmenes y archivos persistentes dentro del cluster de forma dinámica es necesario primero crear una **StorageClass** que llamamos `local-path`. Define cómo y donde se deben almacenar los volúmenes persistentes.
 
 Para ello aplicamos el siguiente archivo:
 ```yaml
@@ -673,8 +673,24 @@ Una vez realizado los pasos anteriores, el amigo ya debería ser capaz de conect
 kubectl get nodes -owide
 ```
 
+## 15- Monitoring
+
+Vamos a instalar **Prometheus** en el cluster como sistema de monitoreo. Seguiremos las indicaciones de esta [página web](https://medium.com/@akilblanchard09/monitoring-a-kubernetes-cluster-using-prometheus-and-grafana-8e0f21805ea9)
 
 
+Para visualizar en el navegador Prometheus:
 
+```sh
+kubectl port-forward -n monitoring svc/prometheus-server 9090:80
+```
 
+Y estará disponible en http://localhost:9090
 
+Para visualizar Grafana:
+
+```sh
+kubectl port-forward -n monitoring svc/grafana 3000:80
+```
+
+Y estará disponible en http://localhost:3000. 
+El usuario es `admin` y la contraseña es la key que se genera ejecutando el comando que viene en el txt.
