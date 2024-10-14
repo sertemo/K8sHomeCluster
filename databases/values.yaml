@@ -1,0 +1,11 @@
+global:
+  postgresql:
+    postgresqlUsername: sertemo
+    postgresqlPassword: 1234567
+    postgresqlDatabase: myDatabase
+
+primary:
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: local-path  # Si usas local-path para almacenamiento
