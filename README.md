@@ -694,3 +694,158 @@ kubectl port-forward -n monitoring svc/grafana 3000:80
 
 Y estará disponible en http://localhost:3000. 
 El usuario es `admin` y la contraseña es la key que se genera ejecutando el comando que viene en el txt.
+
+## 16 - Persistent storage con PostgresSQL
+Otra opción para almacenar datos es tener en el cluster una base de datos corriendo como servicio en un pod.
+
+La manera más fácil de instalar es mediante **Helm**. Para ello primero añadir el repositorio bitnami:
+
+```sh
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo update
+```
+
+Podemos añadir postgres a un namespace dedicado para él o a uno donde vayamos a usarlo con un proyecto. Para crear un namespace por ejemplo llamado database crear el siguiente yaml:
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: databases
+```
+
+Y después crearlo con el comando:
+
+```sh
+k apply -f Namespace.yaml
+```
+
+**Nota**: Hay que crear el Namespace antes de instalar postgres en el namespace.
+
+Para instalar postgres con helm podemos configurar algunos valores creando primero un `values.yaml`:
+
+```yaml
+global:
+  postgresql:
+    postgresqlUsername: admin
+    postgresqlPassword: adminpassword
+    postgresqlDatabase: mydatabase
+
+primary:
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: local-path  # Si usas local-path para almacenamiento
+```
+
+Después instalar el deployment con helm
+```sh
+helm install my-postgres bitnami/postgresql --namespace <your-namespace> -f values.yaml
+```
+
+Para acceder a la base de datos mediante código Python es importante tener en cuenta que:
+
+- Usando **sqlalchemy** la URL será la siguiente: DATABASE_URL = "**postgresql://postgres:<your_password>@my-postgres-postgresql.database.svc.cluster.local:5432/postgres**" (Hay que especificar la ruta completa en el hostname)
+
+Como postgres fue configurado mediante Helm, ya ha creado un **PVC** y por tanto no hay que definirlo. Se puede comprobar con:
+
+```sh
+k get pvc -n database
+```
+
+Para montar ahora una aplicación en Python que use l base de datos recién creada será necesario establecer el `Deployment.yaml`, por ejemplo:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webapp
+  namespace: webapp  # Namespace de la aplicación
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: webapp
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      containers:
+        - name: webapp
+          image: sertemo/webapp-flask:latest  # nombre de la imagen del contenedor de la aplicación
+          ports:
+            - containerPort: 5000
+          env:
+            - name: POSTGRES_HOST
+              value: "my-postgres-postgresql.database.svc.cluster.local" # Dirección del servicio de PostgreSQL
+            - name: POSTGRES_DB
+              value: "postgres"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: my-postgres-postgresql
+                  key: postgres-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: my-postgres-postgresql
+                  key: postgres-password
+
+```
+
+Los valores de user y password se cogen de un secret:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-postgres-postgresql
+  namespace: database
+type: Opaque
+data:
+  postgres-user: dXNlcm5hbWU=    # valor en base64, por ejemplo, 'username'
+  postgres-password: cGFzc3dvcmQ= # valor en base64, por ejemplo, 'password'
+```
+
+Creamos el service asociado a la aplicación
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp-service
+  namespace: webapp
+spec:
+  ports:
+    - port: 5000
+      targetPort: 5000
+  selector:
+    app: webapp
+```
+
+
+Para exponerla a internet podemos crear un Ingress
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: webapp-ingress
+  namespace: webapp
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+    - host: webapp.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: webapp-service
+                port:
+                  number: 5000
+```
+
