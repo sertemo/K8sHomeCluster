@@ -3,7 +3,6 @@
 
 Repo para documentar las etapas de la creación de un cluster kubernetes en 3 [Beelinks S12Pro](https://www.amazon.es/dp/B07RNKFJHT?ref=ppx_yo2ov_dt_b_fed_asin_title)
 
-## Indice
 # Índice
 
 1. [Sistema Operativo](#1--sistema-operativo)
