@@ -6,60 +6,60 @@ Repo para documentar las etapas de la creación de un cluster kubernetes en 3 [B
 ## Indice
 # Índice
 
-1. [Sistema Operativo](#sistema-operativo)
-   - Instalación de Ubuntu Server
-   - Configuración de reinicio automático en BIOS
-   - Instalación de Starship para un prompt personalizado
+1. [Sistema Operativo](#1--sistema-operativo)
+   - [Instalación de Ubuntu Server](#instalación-de-ubuntu-server)
+   - [Configuración de reinicio automático en BIOS](#configuración-de-reinicio-automático-en-bios)
+   - [Instalación de Starship para un prompt personalizado](#instalación-de-starship-para-un-prompt-personalizado)
 
-2. [Configuración de Red](#configuración-de-red)
-   - Deshabilitar cloud-init para configuración de red permanente
-   - Asignación de IPs fijas con netplan
-   - Apertura de puertos con ufw
+2. [Configuración de Red](#2--configuración-de-red)
+   - [Deshabilitar cloud-init para configuración de red permanente](#deshabilitar-cloud-init-para-configuración-de-red-permanente)
+   - [Asignación de IPs fijas con netplan](#asignación-de-ips-fijas-con-netplan)
+   - [Apertura de puertos con ufw](#apertura-de-puertos-con-ufw)
 
-3. [WireGuard VPN](#wireguard-vpn)
-   - Configuración de túneles VPN en el master-node y worker-nodes
-   - Configuración del cliente WireGuard en el portátil
+3. [WireGuard VPN](#3--wireguard-vpn)
+   - [Configuración de túneles VPN en el master-node y worker-nodes](#configuración-de-túneles-vpn-en-el-master-node-y-worker-nodes)
+   - [Configuración del cliente WireGuard en el portátil](#configuración-del-cliente-wireguard-en-el-portátil)
 
-4. [Runtime](#runtime)
-   - Instalación de containerd como runtime de contenedores
-   - Configuración de cgroup para la gestión de recursos
+4. [Runtime](#4--runtime)
+   - [Instalación de containerd como runtime de contenedores](#instalación-de-containerd-como-runtime-de-contenedores)
+   - [Configuración de cgroup para la gestión de recursos](#configuración-de-cgroup-para-la-gestión-de-recursos)
 
-5. [Deshabilitar swap](#deshabilitar-swap)
+5. [Deshabilitar swap](#5--deshabilitar-swap)
 
-6. [Configurar parámetros del kernel](#configurar-parámetros-del-kernel)
+6. [Configurar parámetros del kernel](#6--configurar-parámetros-del-kernel)
 
-7. [Instalar kubeadm, kubectl y kubelet](#instalar-kubeadm-kubectl-y-kubelet)
+7. [Instalar kubeadm, kubectl y kubelet](#7--instalar-kubeadm-kubectl-y-kubelet)
 
-8. [Iniciar el Cluster](#iniciar-el-cluster)
-   - Inicialización del clúster con kubeadm
-   - Configuración del archivo admin.conf
+8. [Iniciar el Cluster](#8--iniciar-el-cluster)
+   - [Inicialización del clúster con kubeadm](#inicialización-del-clúster-con-kubeadm)
+   - [Configuración del archivo admin.conf](#configuración-del-archivo-adminconf)
 
-9. [Unir nodos trabajadores](#unir-nodos-trabajadores)
+9. [Unir nodos trabajadores](#9--unir-nodos-trabajadores)
 
-10. [Instalar plugin de red](#instalar-plugin-de-red)
-    - Instalación de Flannel como CNI
+10. [Instalar plugin de red](#10--instalar-plugin-de-red)
+    - [Instalación de Flannel como CNI](#instalación-de-flannel-como-cni)
 
-11. [Solución de problemas (Troubleshooting)](#solución-de-problemas-troubleshooting)
-    - Renovación de certificados y reinicio de componentes clave
+11. [Solución de problemas (Troubleshooting)](#11--solución-de-problemas-troubleshooting)
+    - [Renovación de certificados y reinicio de componentes clave](#renovación-de-certificados-y-reinicio-de-componentes-clave)
 
-12. [Crear volúmenes en local path](#crear-volúmenes-en-local-path)
-    - Creación de StorageClass
-    - Aprovisionamiento dinámico con local-path-storage
-    - Creación y verificación de PVC y Deployment
+12. [Crear volúmenes en local path](#12--crear-volúmenes-en-local-path)
+    - [Creación de StorageClass](#creación-de-storageclass)
+    - [Aprovisionamiento dinámico con local-path-storage](#aprovisionamiento-dinámico-con-local-path-storage)
+    - [Creación y verificación de PVC y Deployment](#creación-y-verificación-de-pvc-y-deployment)
 
-13. [Conectarse al clúster a través de VPN túnel WireGuard](#conectarse-al-clúster-a-través-de-vpn-túnel-wireguard)
-    - Configuración y acceso al clúster desde la VPN
+13. [Conectarse al clúster a través de VPN túnel WireGuard](#13--conectarse-al-clúster-a-través-de-vpn-túnel-wireguard)
+    - [Configuración y acceso al clúster desde la VPN](#configuración-y-acceso-al-clúster-desde-la-vpn)
 
-14. [Pasos para dar acceso al clúster a un amigo](#pasos-para-dar-acceso-al-clúster-a-un-amigo)
-    - Instalación de kubectl y configuración de túnel VPN
-    - Generación y configuración de claves para WireGuard
-    - Compartición de archivo kubeconfig
+14. [Pasos para dar acceso al clúster a un amigo](#14--pasos-para-dar-acceso-al-clúster-a-un-amigo)
+    - [Instalación de kubectl y configuración de túnel VPN](#instalación-de-kubectl-y-configuración-de-túnel-vpn)
+    - [Generación y configuración de claves para WireGuard](#generación-y-configuración-de-claves-para-wireguard)
+    - [Compartición de archivo kubeconfig](#compartición-de-archivo-kubeconfig)
 
-15. [Monitoreo del Cluster](#monitoreo-del-cluster)
-    - Instalación y visualización de Prometheus y Grafana
+15. [Monitoreo del Cluster](#15--monitoreo-del-cluster)
+    - [Instalación y visualización de Prometheus y Grafana](#instalación-y-visualización-de-prometheus-y-grafana)
 
-16. [Almacenamiento persistente con PostgreSQL](#almacenamiento-persistente-con-postgresql)
-    - Instalación de PostgreSQL con Helm y configuración de PVC
+16. [Almacenamiento persistente con PostgreSQL](#16--almacenamiento-persistente-con-postgresql)
+    - [Instalación de PostgreSQL con Helm y configuración de PVC](#instalación-de-postgresql-con-helm-y-configuración-de-pvc)
 
 
 ## 1- Sistema Operativo
