@@ -3,6 +3,65 @@
 
 Repo para documentar las etapas de la creación de un cluster kubernetes en 3 [Beelinks S12Pro](https://www.amazon.es/dp/B07RNKFJHT?ref=ppx_yo2ov_dt_b_fed_asin_title)
 
+## Indice
+# Índice
+
+1. [Sistema Operativo](#sistema-operativo)
+   - Instalación de Ubuntu Server
+   - Configuración de reinicio automático en BIOS
+   - Instalación de Starship para un prompt personalizado
+
+2. [Configuración de Red](#configuración-de-red)
+   - Deshabilitar cloud-init para configuración de red permanente
+   - Asignación de IPs fijas con netplan
+   - Apertura de puertos con ufw
+
+3. [WireGuard VPN](#wireguard-vpn)
+   - Configuración de túneles VPN en el master-node y worker-nodes
+   - Configuración del cliente WireGuard en el portátil
+
+4. [Runtime](#runtime)
+   - Instalación de containerd como runtime de contenedores
+   - Configuración de cgroup para la gestión de recursos
+
+5. [Deshabilitar swap](#deshabilitar-swap)
+
+6. [Configurar parámetros del kernel](#configurar-parámetros-del-kernel)
+
+7. [Instalar kubeadm, kubectl y kubelet](#instalar-kubeadm-kubectl-y-kubelet)
+
+8. [Iniciar el Cluster](#iniciar-el-cluster)
+   - Inicialización del clúster con kubeadm
+   - Configuración del archivo admin.conf
+
+9. [Unir nodos trabajadores](#unir-nodos-trabajadores)
+
+10. [Instalar plugin de red](#instalar-plugin-de-red)
+    - Instalación de Flannel como CNI
+
+11. [Solución de problemas (Troubleshooting)](#solución-de-problemas-troubleshooting)
+    - Renovación de certificados y reinicio de componentes clave
+
+12. [Crear volúmenes en local path](#crear-volúmenes-en-local-path)
+    - Creación de StorageClass
+    - Aprovisionamiento dinámico con local-path-storage
+    - Creación y verificación de PVC y Deployment
+
+13. [Conectarse al clúster a través de VPN túnel WireGuard](#conectarse-al-clúster-a-través-de-vpn-túnel-wireguard)
+    - Configuración y acceso al clúster desde la VPN
+
+14. [Pasos para dar acceso al clúster a un amigo](#pasos-para-dar-acceso-al-clúster-a-un-amigo)
+    - Instalación de kubectl y configuración de túnel VPN
+    - Generación y configuración de claves para WireGuard
+    - Compartición de archivo kubeconfig
+
+15. [Monitoreo del Cluster](#monitoreo-del-cluster)
+    - Instalación y visualización de Prometheus y Grafana
+
+16. [Almacenamiento persistente con PostgreSQL](#almacenamiento-persistente-con-postgresql)
+    - Instalación de PostgreSQL con Helm y configuración de PVC
+
+
 ## 1- Sistema Operativo
 
 - Instalar **Ubuntu Server** en los 3 beelink
