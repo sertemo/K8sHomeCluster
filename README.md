@@ -909,3 +909,45 @@ spec:
 
 # 17 - Actualizar claves GPG
 Para actualizar las claves GPG, se ha preparado un script que realiza dichas tareas. Este script se va a guardar en un directorio compartido por los 3 nodos usando NFS
+
+El script es el siguiente:
+
+```sh
+#!/bin/bash
+
+# Este script hay que ejecutarlo cuando o bien las claves estén caducadas
+# O cuando queramos actualizar la version de kubernetes
+
+# Verificar permisos de superusuario
+if [[ $EUID -ne 0 ]]; then
+   echo "Este script debe ejecutarse como superusuario."
+   exit 1
+fi
+
+echo "Configurando el repositorio de Kubernetes y actualizando paquetes..."
+
+# Paso 1: Crear el directorio para la clave GPG
+mkdir -p /etc/apt/keyrings
+
+# Paso 2: Descargar la clave GPG del repositorio de Kubernetes
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+echo "Clave GPG de Kubernetes descargada."
+
+# Paso 3: Configurar el archivo de repositorio de Kubernetes
+echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /" | tee /etc/apt/sources.list.d/kubernetes.list
+echo "Repositorio de Kubernetes configurado."
+
+# Paso 4: Actualizar repositorios y paquetes de Kubernetes
+apt-get update -y
+echo "Repositorios actualizados."
+
+# Paso 5: Actualizar paquetes de Kubernetes (kubectl, kubelet y kubeadm)
+apt-get install -y kubeadm kubelet kubectl
+echo "Paquetes de Kubernetes actualizados."
+
+# Paso 6: Reiniciar el servicio de kubelet
+systemctl restart kubelet
+echo "Servicio de kubelet reiniciado."
+
+echo "Actualización completada exitosamente."
+```
