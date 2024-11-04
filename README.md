@@ -914,6 +914,7 @@ Para ello lo primero es montar un directorio compartido entre los 3 nodos. El no
 
 ## 17.1 - Crear un sistema de archivos compartido NFS
 **PARTE 1: CONFIGURACIÓN EN EL SERVIDOR**
+
 1 - Instalar NFS en el servidor
 ```sh
 sudo apt update
@@ -962,6 +963,7 @@ sudo systemctl enable rpcbind
 ```
 
 PARTE 2: CONFIGURACIÓN EN LOS CLIENTES NFS
+
 1- Instalar NFS
 
 ```sh
