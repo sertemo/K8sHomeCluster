@@ -907,8 +907,96 @@ spec:
                   number: 5000
 ```
 
-# 17 - Actualizar claves GPG
-Para actualizar las claves GPG, se ha preparado un script que realiza dichas tareas. Este script se va a guardar en un directorio compartido por los 3 nodos usando NFS
+# 17 - Actualizar claves GPG / Sistema de archivos compartidos NFS
+Para actualizar las claves GPG, se ha preparado un script que realiza dichas tareas. Este script se va a guardar en un directorio compartido por los 3 nodos usando NFS.
+
+Para ello lo primero es montar un directorio compartido entre los 3 nodos. El nodo maestro hará de servidor **NFS** Network File Sharing y los otros dos nodos de nodos cliente. A continuación los pasos para montar un sistema de archivos compartidos
+
+## 17.1 - Crear un sistema de archivos compartido NFS
+**PARTE 1: CONFIGURACIÓN EN EL SERVIDOR**
+1 - Instalar NFS en el servidor
+```sh
+sudo apt update
+sudo apt install nfs-kernel-server -y
+```
+
+2- Crear el directorio compartido
+```sh
+sudo mkdir -p /nfs/shared_folder
+sudo chmod 777 /nfs/shared_folder  # Permiso amplio para pruebas
+```
+
+3- Configurar las exportaciones
+Editar el archivo de exportaciones
+
+```sh
+sudo nano /etc/exports
+```
+
+Añadir la siguiente línea al final. La red de cliente especificamos la que da WireGuard privada (10.0.0.0/24)
+
+```sh
+/nfs/shared_folder 10.0.0.0/24(rw,sync,no_subtree_check)
+```
+
+4- Aplicar la configuración
+
+```sh
+sudo exportfs -a
+sudo exportfs -v
+```
+
+5- Hay que crear reglas de Firewall para poder permitir el tráfico desde los clientes
+
+```sh
+sudo ufw allow from 10.0.0.0/24 to any port nfs
+```
+
+6- Iniciar y habilitar el servicio NFS
+
+```sh
+sudo systemctl start nfs-kernel-server
+sudo systemctl enable nfs-kernel-server
+sudo systemctl start rpcbind
+sudo systemctl enable rpcbind
+```
+
+PARTE 2: CONFIGURACIÓN EN LOS CLIENTES NFS
+1- Instalar NFS
+
+```sh
+sudo apt update
+sudo apt install nfs-common -y
+```
+
+2- Crear punto de montaje
+
+```sh
+sudo mkdir -p /mnt/shared_folder
+```
+
+3- Montar el recurso NFS
+
+La IP es la del servidor dada por la VPN WireGuard
+
+```sh
+sudo mount 10.0.0.1:/nfs/shared_folder /mnt/shared_folder
+```
+
+4- Verificar el montaje
+
+```sh
+df -h | grep shared_folder
+```
+
+5- Configurar montaje automático
+Editamos archivo `/etc/fstab` y añadimos al final la siguiente linea:
+
+```sh
+10.0.0.1:/nfs/shared_folder /mnt/shared_folder nfs defaults 0 0
+```
+
+El script que se encarga de actualizar las clavves GPG estará en `/mnt/shared_folder` y estará disponible en los nodos worker a pesar de haberse creado en el nodo maestro o servidor.
 
 El script es el siguiente:
 
