@@ -907,3 +907,5 @@ spec:
                   number: 5000
 ```
 
+# 17 - Actualizar claves GPG
+Para actualizar las claves GPG, se ha preparado un script que realiza dichas tareas. Este script se va a guardar en un directorio compartido por los 3 nodos usando NFS
